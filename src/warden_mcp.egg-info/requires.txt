@@ -1,0 +1,8 @@
+PyYAML>=6.0
+
+[dev]
+pytest>=7.0
+rich>=13.0
+
+[pretty]
+rich>=13.0

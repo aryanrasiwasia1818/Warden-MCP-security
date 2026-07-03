@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# Warden default policy
+#
+# This is the single, reviewable source of truth for what MCP tools are allowed
+# to do. It encodes a zero-trust, least-privilege posture: every capability is
+# denied unless a tool has been granted it explicitly.
+# ---------------------------------------------------------------------------
+
+# How severe a finding must be before Warden blocks vs. merely flags an action.
+thresholds:
+  block_at: high        # findings >= HIGH block the action
+  flag_at: medium       # findings >= MEDIUM are recorded but allowed
+
+# The defense layers to run, in order.
+enabled_detectors:
+  - static_metadata     # Layer 1: scan tool descriptors for poisoning (pre-flight)
+  - provenance          # Layer 2: detect descriptor drift / silent swaps (MCPoison)
+  - output_injection    # Layer 3a: scan untrusted tool OUTPUT for injection (CurXecute)
+  - behavioral          # Layer 3b: flag anomalous tool-call patterns at runtime
+
+# Per-detector tuning. Sensible defaults live in code; override here.
+detector_config:
+  behavioral:
+    max_calls_per_minute: 30      # rate ceiling per session
+    escalation_window: 10         # calls to consider for read->write/exec escalation
+
+# ---------------------------------------------------------------------------
+# Least-privilege permissions (zero-trust: default deny)
+# ---------------------------------------------------------------------------
+permissions:
+  default_effect: deny
+
+  # Paths NO tool may read or write unless it holds an explicit matching grant.
+  # This is the CurXecute lesson encoded as policy: a weather/Slack tool must
+  # never be able to rewrite the agent's own MCP configuration.
+  sensitive_paths:
+    - "**/.cursor/mcp.json"
+    - "**/.cursor/rules/**"
+    - "**/.vscode/**"
+    - "**/.ssh/**"
+    - "**/.aws/credentials"
+    - "**/.env"
+    - "**/.git/config"
+    - "/etc/passwd"
+    - "/etc/shadow"
+    - "**/id_rsa"
+    - "**/*.pem"
+
+  # Explicit grants. A tool absent from this map inherits default_effect (deny).
+  tools:
+    get_weather:
+      network: ["api.weather.example.com"]
+      exec: false
+
+    read_document:
+      fs_read: ["${WORKSPACE}/docs/**"]
+      exec: false
+
+    search_notes:
+      fs_read: ["${WORKSPACE}/notes/**"]
+      exec: false
+
+    run_build:
+      fs_read: ["${WORKSPACE}/**"]
+      fs_write: ["${WORKSPACE}/build/**"]
+      exec: true          # explicitly trusted to run a build step
+
+# ---------------------------------------------------------------------------
+# Sandbox: resource limits for any tool that actually executes code.
+# ---------------------------------------------------------------------------
+sandbox:
+  enabled: true
+  timeout_seconds: 5
+  memory_mb: 256
+  cpu_seconds: 5
+  allow_network: false     # network egress denied by default
