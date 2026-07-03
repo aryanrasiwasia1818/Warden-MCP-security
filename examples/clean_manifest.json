@@ -1,0 +1,20 @@
+{
+  "_comment": "A clean MCP tool manifest — every tool should pass the scan (no findings).",
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get the current weather for a city.",
+      "inputSchema": { "type": "object", "properties": { "city": { "type": "string" } } }
+    },
+    {
+      "name": "read_document",
+      "description": "Read a document from the workspace docs folder.",
+      "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } }
+    },
+    {
+      "name": "search_notes",
+      "description": "Search your saved notes by keyword and return matches.",
+      "inputSchema": { "type": "object", "properties": { "query": { "type": "string" } } }
+    }
+  ]
+}

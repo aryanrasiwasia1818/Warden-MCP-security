@@ -1,0 +1,8 @@
+# Warden runtime dependencies (kept deliberately tiny so it runs fully offline).
+PyYAML>=6.0
+
+# Optional, for prettier CLI output. Warden works without it.
+rich>=13.0
+
+# Dev / test only.
+pytest>=7.0

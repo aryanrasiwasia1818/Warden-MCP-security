@@ -1,0 +1,39 @@
+%% Warden end-to-end workflow. Render at https://mermaid.live or in any
+%% Mermaid-aware viewer. Also embedded in ABOUT.md.
+flowchart TD
+    subgraph INGEST["Stage A · Ingestion (per tool, before exposure)"]
+        D[Tool descriptor from MCP server] --> S1[L1: Static metadata analysis<br/>regex · base64 decode · hidden unicode]
+        S1 --> S2[L2: Provenance guard<br/>content-hash pin + drift]
+        S2 --> IV{Verdict}
+        IV -- BLOCK --> IX[Reject · tool never exposed]
+        IV -- ALLOW --> IE[Tool exposed to agent]
+    end
+
+    IE --> C[Agent issues a tool call]
+
+    subgraph RUNTIME["Stage B · Runtime (every call)"]
+        C --> P[Least-privilege permission check<br/>fs / network / sensitive paths]
+        C --> B[L3b: Behavioral analysis<br/>rate · loop · read→exec escalation]
+        P --> PRE{Pre-call verdict}
+        B --> PRE
+        PRE -- BLOCK --> RX[Refuse · do not execute]
+        PRE -- ALLOW / FLAG --> EX[Execute tool in sandbox<br/>cpu · mem · time · net limits]
+        EX --> O[L3a: Output-injection scan<br/>untrusted result ← CurXecute]
+        O --> POST{Post-call verdict}
+        POST -- BLOCK --> Q[Quarantine output<br/>agent never sees it]
+        POST -- ALLOW / FLAG --> R[Return result to agent]
+    end
+
+    IV -. logged .-> L[(Tamper-evident<br/>hash-chained audit ledger)]
+    PRE -. logged .-> L
+    POST -. logged .-> L
+    RX -. logged .-> L
+    Q -. logged .-> L
+
+    subgraph BENCH["Measurement"]
+        RT[Red-team corpus<br/>37 attacks + 13 benign] --> RUN[Benchmark runner]
+        RUN --> REP[Report · JSON / Markdown / HTML<br/>block rate · FP rate · per-CVE]
+    end
+
+    RUNTIME -. same guardrail .-> RUN
+    INGEST -. same guardrail .-> RUN
